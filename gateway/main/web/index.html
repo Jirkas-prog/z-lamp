@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#141820"><title>Hue Lamp · vlastní světlo</title>
+  <link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script>
+</head>
+<body>
+<header><a class="brand" href="/">◉ <span><span id="device-name">Z-lamp</span><small>Světlo podle tebe</small></span></a><span id="connection" class="pill">Lokální ovládání</span></header>
+<main>
+  <div id="workspace" inert>
+    <nav aria-label="Stránky"><button data-tab="lights" class="active">Světla</button><button data-tab="groups">Skupiny</button><button data-tab="scenes">Scény</button><button data-tab="remote">Ovladač</button><button data-tab="settings">Nastavení</button><button data-tab="updates">Aktualizace</button></nav>
+    <section id="tab-lights">
+      <div class="section-heading"><div><p class="eyebrow">TVŮJ PROSTOR</p><h1>Každé světlo má náladu.</h1><p id="summary">Načítám světla…</p></div><button id="pair-open">＋ Přidat žárovku</button></div>
+      <div id="pairing" class="panel note" hidden><div><strong id="pair-title">Párování</strong><p>Žárovku nech pod napětím a poblíž XIAO. Pokud je připojená k Hue Bridge, nejdřív ji resetuj pomocí Hue aplikace nebo ovladače. Tady otevřeš síť pro připojení.</p></div><button id="pair-start" class="primary">Otevřít na 3 minuty</button><button id="pair-stop">Zavřít párování</button></div>
+      <div class="grid-main"><div><div id="light-list" class="light-list"></div><p id="empty" class="muted" hidden>Zatím tu nejsou žádné žárovky. Začni tlačítkem Přidat žárovku.</p></div>
+        <section class="panel editor"><p class="eyebrow">OVLÁDÁNÍ</p><label>Co nastavujeme<select id="target"><option value="all">Všechny žárovky</option></select></label><h2 id="editor-name">Všechny žárovky</h2>
+          <div class="power-row"><span>Světlo</span><button id="power-on" class="primary">Zapnout</button><button id="power-off">Vypnout</button></div>
+          <label for="level">Jas <output id="level-value"></output></label><input id="level" type="range" min="1" max="254" value="127">
+          <label for="kelvin">Teplota bílé <output id="kelvin-value"></output></label><input id="kelvin" class="temperature" type="range" min="2000" max="6500" step="10" value="2700">
+          <div class="color-heading"><span>Barva</span><button id="white-mode" type="button">Bílá</button><button id="full-color" type="button">Plná barva</button></div>
+          <div id="color-wheel" class="color-wheel" role="group" aria-label="Barevné kolo. Odstín a sytost lze nastavit také posuvníky níže."><canvas width="320" height="320" aria-hidden="true"></canvas><span id="color-cursor" aria-hidden="true"></span></div>
+          <label for="hue">Odstín <output id="hue-value"></output></label><input id="hue" class="rainbow" type="range" min="0" max="360" value="0">
+          <label for="saturation">Sytost <output id="saturation-value"></output></label><input id="saturation" type="range" min="0" max="100" value="0">
+          <p class="hint">Střed kola je bílá zvolené teploty, okraj plně sytá barva. Teplota ovlivňuje příměs bílé, při 100 % sytosti se neuplatňuje. Náhled na obrazovce je orientační.</p>
+          <p id="control-status" class="hint" role="status">Připraveno</p>
+          <p id="selection-note" class="hint"></p><button id="rename" class="subtle" hidden>Nastavení zařízení</button>
+        </section>
+      </div>
+    <section class="panel" id="timers-panel"><h2>Časovač vypnutí</h2>
+      <p>Odpočet běží v lampě. Telefon i web můžeš odpojit.</p>
+      <form id="timer-form"><label>Žárovky nebo skupina<select id="timer-target"></select></label>
+        <label>Vypnout za (minuty)<input id="timer-minutes" type="number" min="1" max="1440" value="60" required></label>
+        <div class="actions"><button class="primary">Nastavit časovač</button><button id="timer-cancel" type="button">Zrušit časovač výběru</button></div>
+      </form><div id="timer-list" role="status"></div>
+      <p class="hint">Nastavení časovače samo nerozsvěcí. Jas a barvu můžeš dál měnit; ruční vypnutí časovač zruší. Po restartu Wi-Fi desky se čekající vypnutí provede hned po obnovení spojení se žárovkou. Časovač skupiny se při uložení vztáhne na její současné žárovky, displej má vlastní uspávání.</p>
+    </section>
+    </section>
+    <dialog id="device-dialog" aria-labelledby="device-title">
+      <div class="section-heading"><h2 id="device-title">Nastavení zařízení</h2><button id="device-close" type="button" aria-label="Zavřít nastavení zařízení">Zavřít</button></div>
+      <p id="device-info"></p><p id="device-status" role="status"></p>
+      <form id="device-name-form"><label>Název zařízení<input id="device-label" required maxlength="32"></label><button class="primary">Uložit název</button></form>
+      <form id="device-values-form"><h3>Světlo</h3><label class="check"><input id="device-on" type="checkbox">Zapnuto</label><div class="device-grid">
+        <label>Jas (%)<input id="device-level" type="number" min="1" max="100" required></label>
+        <label>Teplota bílé (K)<input id="device-kelvin" type="number" min="2000" max="6500" required></label>
+        <label>Odstín (°)<input id="device-hue" type="number" min="0" max="360" required></label>
+        <label>Sytost (%)<input id="device-saturation" type="number" min="0" max="100" required></label>
+      </div><button class="primary">Použít hodnoty světla</button></form>
+      <form id="device-config-form"><h3>Chování žárovky</h3>
+        <label>Délka přechodu (s)<input id="device-transition" type="number" min="0" max="10" step="0.1" required></label>
+        <label>Podání barev<select id="device-color"><option value="native">Nativní rozsah žárovky</option><option value="xy">Kompatibilní XY / sRGB</option></select></label>
+        <p class="hint">Nativní režim při 100 % sytosti posílá maximum žárovky. XY použij u světel bez podpory odstínu a sytosti. Přechod platí pro jas a barvu, ne pro samotné zapnutí a vypnutí.</p>
+        <button class="primary">Uložit chování</button><button id="identify" type="button">Najít žárovku · 3 s</button>
+      </form>
+      <div id="display-device-note" hidden><p>Režim obrazovky, uspávání a jas stavového zobrazení nastavíš v Nastavení → Displej & noc.</p><button id="display-settings" type="button">Nastavení displeje</button></div>
+      <section id="device-startup">
+        <form id="wake-form"><h3>Po běžném zapnutí</h3>
+          <p class="hint">Platí pro ON po předchozím vypnutí. W, barvy, scény a preset tlačítka mají vlastní hodnoty.</p>
+          <label>Zapnout s…<select id="wake-mode"><option value="0">Posledním jasem a barvou</option><option value="1">Vlastním výchozím nastavením</option></select></label>
+          <div id="wake-values" class="device-grid"></div><button type="button" id="wake-copy">Převzít současné světlo</button><button class="primary">Uložit běžné zapnutí</button>
+        </form>
+        <form id="power-form"><h3>Po přivedení napájení</h3>
+          <p class="hint">Ukládá se přímo do žárovky a funguje i bez ovladače. Výsledek zápisu se ověří přečtením ze žárovky.</p>
+          <label>Po výpadku elektřiny<select id="power-mode"><option value="0">Neměnit nastavení žárovky</option><option value="1">Zůstat vypnutá</option><option value="2">Obnovit poslední stav včetně ON/OFF</option><option value="3">Zapnout s posledním jasem a barvou</option><option value="4">Zapnout s vlastním nastavením</option></select></label>
+          <div id="power-values" class="device-grid"></div><button type="button" id="power-copy">Převzít současné světlo</button>
+          <p class="hint">Sytost 0 % použije teplotu bílé. Barevný start Hue používá XY; může se mírně lišit od běžného nativního podání barev. Volba „Neměnit“ ponechá nastavení, které už žárovka má.</p>
+          <button class="primary">Uložit do žárovky</button><p id="power-status" role="status"></p>
+        </form>
+      </section>
+      <details id="device-removal"><summary>Odebrání zařízení</summary>
+        <p>Odpárování požádá zapnutou žárovku o opuštění sítě. Po jejím potvrzení se odstraní i ze skupin.</p><button id="remove-device" class="danger" type="button">Odpárovat žárovku</button>
+        <p>Force remove odstraní záznam z ovladače i bez odpovědi. Žárovku na dálku neresetuje; před novým párováním ji může být nutné resetovat.</p><button id="force-remove" class="danger" type="button">Force remove</button>
+      </details>
+    </dialog>
+    <section id="tab-groups" hidden>
+      <div class="section-heading"><div><p class="eyebrow">SPOLEČNÁ NÁLADA</p><h1>Skupiny světel.</h1><p>Ovládej několik žárovek jedním pohybem. Přidat můžeš i displej.</p></div><button id="new-group" class="primary">＋ Nová skupina</button></div>
+      <div id="group-list" class="cards"></div>
+      <form id="group-form" class="panel" hidden><h2 id="group-heading">Nová skupina</h2><label>Název<input id="group-name" required maxlength="32"></label><fieldset><legend>Členové skupiny</legend><div id="group-members"></div></fieldset><div class="actions"><button class="primary">Uložit skupinu</button><button type="button" id="cancel-group">Zrušit</button><button type="button" id="delete-group" class="danger" hidden>Smazat skupinu</button></div></form>
+    </section>
+    <section id="tab-scenes" hidden>
+      <div class="section-heading"><div><p class="eyebrow">BARVY V POHYBU</p><h1>Scény pro celý prostor.</h1><p>12 hotových režimů nebo tvoje vlastní paleta. Barevné cykly jsou vždy bez bílé.</p></div><button id="new-scene" class="primary">＋ Nová scéna</button></div>
+      <div class="panel scene-now"><p id="scene-running" role="status">Žádná scéna neběží.</p><button id="scene-stop">Ukončit cyklus</button></div>
+      <div id="scene-list" class="cards"></div>
+      <form id="scene-form" class="panel" hidden><h2 id="scene-heading">Nová scéna</h2>
+        <label>Název scény<input id="scene-name" required maxlength="32"></label>
+        <label>Režim<select id="scene-mode"></select></label><p id="scene-description" class="hint"></p>
+        <div class="device-grid"><label>Jas scény (%)<input id="scene-level" type="number" min="1" max="100" required></label>
+          <label>Výdrž každého kroku (s)<input id="scene-hold" type="number" min="0" max="60" step="0.1" required></label>
+          <label>Přechod do dalšího kroku (s)<input id="scene-fade" type="number" min="0" max="10" step="0.1" required></label></div>
+        <p class="hint">Výdrž + přechod tvoří jeden krok, nejméně 0,5 s. Nulový přechod znamená okamžitou změnu. Poslední barva se vrací k první. Během scény se používá toto časování místo přechodu nastaveného u žárovky.</p>
+        <fieldset id="scene-palette-box" hidden><legend>Tvoje paleta · 2 až 8 barev</legend><div id="scene-palette"></div><button id="scene-add-color" type="button">＋ Přidat barvu</button><p class="hint">Barvy jsou plně syté. Měnit můžeš odstín i pořadí; bílá ani šedá se do cyklu nepřidávají.</p></fieldset>
+        <label>Světla pro tuto scénu<select id="scene-scope"><option value="ir">Aktuální cíl IR ovladače</option><option value="members">Vlastní seznam a pořadí světel</option></select></label>
+        <label id="scene-stagger-label" class="check"><input id="scene-stagger" type="checkbox">Každé světlo začne o jeden krok dál</label>
+        <div id="scene-members-box" hidden>
+          <div class="actions"><select id="scene-add-member" aria-label="Přidat světlo do scény"></select><button id="scene-add-light" type="button">Přidat světlo</button><button id="scene-all-lights" type="button">Přidat všechny žárovky</button></div>
+          <div id="scene-members"></div><div class="actions"><button id="scene-same" type="button">Všichni stejný krok</button><button id="scene-stagger-all" type="button">Rozložit podle pořadí</button></div>
+          <p class="hint">Počáteční krok 1 znamená první barvu. Pro dvě barvy dej první žárovce krok 1 a druhé krok 2: barvy si budou vyměňovat. Vyšší kroky se opakují v cyklu. Šipky určují pořadí světel, také pro režim Barevný běžec.</p>
+        </div>
+        <div class="actions"><button class="primary">Uložit scénu</button><button id="scene-cancel" type="button">Zrušit</button><button id="scene-delete" type="button" class="danger" hidden>Smazat scénu</button></div>
+      </form>
+    </section>
+    <section id="tab-remote" hidden><div class="section-heading"><div><p class="eyebrow">VŠECHNO PRO IR</p><h1>Dálkový ovladač.</h1><p>Jeho světla, stupně jasu, bílá, scény a naučená tlačítka na jednom místě.</p></div></div><div class="settings-grid">
+      <form id="ir-form" class="panel"><h2>Infračervený ovladač · 24 tlačítek</h2>
+        <p>Přijímač: GPIO25 data, GPIO26 zem, GPIO27 napájení přibližně 3,3 V. Vyžaduje přijímač pro 3,3 V s demodulovaným výstupem. Funguje i bez Wi‑Fi. Podporován je protokol NEC.</p>
+        <label class="check"><input id="irEnabled" type="checkbox">Ovládat světla přes IR</label>
+        <label>Světla ovladače<select id="irTarget"></select></label><fieldset id="ir-members-box" hidden><legend>Vyber jednotlivá světla</legend><div id="ir-members"></div></fieldset><button class="primary">Uložit IR ovladač</button>
+        <p class="hint">W použije vlastní uložený jas a teplotu bílé. Jas ± má nastavitelnou logaritmickou stupnici; ve scéně mění její celkový jas a nechá ji běžet. U běžné skupiny se jas odvozuje od prvního člena. Barvy a ON mohou probudit vybraný displej.</p>
+        <p id="ir-status" role="status"></p><p id="ir-last" class="hint"></p>
+        <details><summary>Naučit tlačítka jiného NEC ovladače</summary><p class="hint">Vyber tlačítko níže a do 20 s stiskni odpovídající tlačítko na ovladači. Při učení se světla nemění; kód se uloží automaticky.</p>
+        <div id="ir-keys" class="ir-keys"></div><div class="actions"><button id="ir-cancel" type="button">Zrušit učení</button><button id="ir-reset" type="button">Obnovit výchozí kódy</button></div></details>
+        <p class="hint">Čtyři efektová tlačítka spustí přiřazené scény pouze pro světla povolená tomuto ovladači. OFF, W nebo volba barvy během scény ovládá její účastníky a ukončí cyklus. Příkaz z webu a preset scénu také ukončí. Scény se po restartu samy nespouštějí. IR nikdy nezapíná hotspot.</p>
+      </form>
+      <form id="remote-form" class="panel"><h2>Co dělají tlačítka ovladače</h2>
+        <h3>Bílá · W</h3><div class="device-grid"><label>Teplota bílé (K)<input id="white-kelvin" type="number" min="2000" max="6500" required></label><label>Jas bílé (%)<input id="white-level" type="number" min="1" max="100" required></label></div>
+        <h3>Jas + / −</h3><label>Stupnice<select id="brightness-mode"><option value="auto">Doporučená od 1 %</option><option value="custom">Vlastní jasy jednotlivých kroků</option></select></label><label>Počet stupňů jasu<input id="brightness-steps" type="number" min="2" max="32" required value="10"></label><div id="brightness-levels" class="device-grid" hidden></div><p id="brightness-scale" class="hint"></p><p class="hint">Změna počtu předvyplní novou stupnici. Ve vlastním režimu pak uprav jednotlivé jasy (1–100 %, vždy vzestupně).</p>
+        <p class="hint">Násobně odstupňované hodnoty: jemnější změny při nízkém jasu, větší při vysokém. Minimum zůstává rozsvícené; k vypnutí slouží OFF. Držení tlačítka postupuje po stupních.</p>
+        <h3>Čtyři tlačítka scén</h3><div id="remote-buttons"></div>
+        <p class="hint">Scény vytvoříš na kartě Scény. Na ovladačích s jiným potiskem přiřaď fyzické tlačítko pomocí učení IR kódu.</p><button class="primary">Uložit tlačítka</button>
+      </form>
+    </div></section>
+    <section id="tab-updates" hidden><div class="section-heading"><div><p class="eyebrow">BEZ USB KABELU</p><h1>Aktualizace desek.</h1><p>Každou desku aktualizuj zvlášť. C6 dostane firmware přes propojení UART.</p></div></div>
+      <div class="settings-grid"><section class="panel"><h2>Nainstalované verze</h2><p id="update-versions"></p><p id="update-phase" role="status"></p><progress id="update-progress" max="100" value="0" aria-label="Průběh aktualizace"></progress><p id="update-bytes" class="hint"></p><button id="update-cancel" type="button" disabled>Zrušit přenos</button></section>
+      <form id="update-form" class="panel"><h2>Nahrát nový firmware</h2><label>Deska<select id="update-target"><option value="gateway">T‑Display · Wi‑Fi a web</option><option value="coordinator">XIAO C6 · Zigbee</option></select></label><label>Zdroj<select id="update-source"><option value="file">Soubor z telefonu nebo počítače</option><option value="url">Stáhnout z internetu (HTTPS)</option></select></label>
+      <label id="update-file-label">Balíček firmwaru (.zota)<input id="update-file" type="file" accept=".zota" required></label><label id="update-url-label" hidden>HTTPS adresa balíčku<input id="update-url" type="url" placeholder="https://…/lamp_gateway.zota" disabled></label>
+      <p class="hint">Použij balíček určený této sestavě. Kontroluje se cílová deska, velikost, SHA‑256 i obraz firmwaru. Přenos do C6 trvá několik minut. Během instalace je ovládání světel pozastavené. Web musí být dostupný ve stejné síti; vzdálený přístup sám nezapíná.</p><button class="primary">Instalovat firmware</button>
+      <p class="hint">HTTPS musí vést přímo na soubor (povolena jsou HTTPS přesměrování). Aktualizace se nespouštějí automaticky. Při přerušeném přenosu zůstává původní firmware; během zápisu nech obě desky napájené.</p></form></div>
+    </section>
+    <section id="tab-settings" hidden>
+      <div class="section-heading"><div><p class="eyebrow">DROBNÁ VYLADĚNÍ</p><h1>Nastavení sestavy.</h1><p id="network-summary"></p></div></div>
+      <div class="settings-grid">
+      <section class="panel" id="ble-panel"><h2>Bluetooth · telefon</h2>
+        <p id="ble-status" role="status">Načítám Bluetooth…</p>
+        <p id="ble-code">Párování bez PINu je dostupné vždy, když je Bluetooth zapnuté.</p>
+        <div class="actions"><button id="ble-toggle" type="button">Vypnout Bluetooth</button></div>
+        <ol id="ble-instructions"><li>Otevři aplikaci <strong>Z-lamp</strong> a stiskni <strong>Párovat</strong>.</li><li>Klepni na svoji lampu v seznamu.</li><li>Připojení proběhne bez PINu. Případné potvrzení Androidu přijmi.</li></ol>
+        <p class="hint">Web, tlačítko na desce ani minimální síla signálu nejsou pro párování potřeba. Připojený může být jeden telefon. Ukládají se čtyři telefony; při přidání dalšího se nahradí nejstarší párování.</p>
+        <p class="hint">Podržením GPIO0 pět sekund lze zapnout Bluetooth a ukázat nápovědu na displeji. Krátký stisk dál ovládá preset. Bluetooth hotspot nezapíná; během aktualizace firmwaru se dočasně pozastaví.</p>
+        <p id="ble-memory" class="hint"></p><button id="ble-forget" type="button" class="danger">Zapomenout všechny telefony</button>
+      </section>
+      <form id="screen-form" class="panel"><h2>Displej & noc</h2><p>Krátký stisk GPIO35 zhasne nebo probudí obrazovku. Podržení 3 s přepne hotspot. Uspání displeje Wi‑Fi nemění.</p>
+        <label class="check"><input id="bootOn" type="checkbox">Rozsvítit displej po zapnutí desky</label>
+        <label>Automaticky zhasnout po (s)<input id="timeout" type="number" min="0" max="3600" required></label><p class="hint">120 = dvě minuty. 0 = bez časovače. Platí i pro režim lampičky.</p>
+        <label>Režim<select id="mode"><option value="status">Stav a připojení</option><option value="lamp">Barevná lampička</option></select></label>
+        <label>Jas stavové obrazovky (%)<input id="statusBrightness" type="number" min="1" max="100" required></label>
+        <p class="hint">Spící displej probudíš tlačítkem. Příkaz z webu ani skupiny jej sám nerozsvítí. Fyzické tlačítko presetu jej rozsvítit může. Stavové stránky se střídají automaticky.</p><button class="primary">Uložit displej</button>
+      </form>
+      <form id="preset-form" class="panel"><h2>Preset tlačítka GPIO0</h2><p>První stisk rozsvítí zvolený cíl do tohoto presetu. Pokud už některý člen svítí, stisk celý cíl zhasne. Funguje i bez Wi‑Fi.</p>
+        <label>Cíl tlačítka<select id="presetTarget"></select></label>
+        <label>Jas (%)<input id="presetLevel" type="number" min="1" max="100" required></label>
+        <label>Teplota bílé (K)<input id="presetKelvin" type="number" min="2000" max="6500" required></label>
+        <label>Odstín (°)<input id="presetHue" type="number" min="0" max="360" required></label>
+        <label>Sytost (%)<input id="presetSaturation" type="number" min="0" max="100" required></label>
+        <p class="hint">Displej vybraný přímo nebo ve skupině se tímto fyzickým tlačítkem také probudí. Jeho časovač zůstává platný.</p><button class="primary">Uložit preset</button>
+      </form>
+      <form id="alias-form" class="panel"><h2>Síťový název zařízení</h2>
+        <label>Alias zařízení<input id="alias" required minlength="1" maxlength="32" pattern="[A-Za-z0-9]([A-Za-z0-9\-]{0,30}[A-Za-z0-9])?" autocomplete="off"></label>
+        <p id="alias-status"></p><p class="hint">1–32 písmen bez diakritiky, číslic nebo pomlček. Pomlčka nesmí být na začátku ani na konci. Příklad: Z-lamp → http://z-lamp.local. Změna platí po restartu. Název hotspotu se nastavuje zvlášť.</p>
+        <button class="primary">Uložit alias</button>
+      </form>
+      <form id="networks-form" class="panel"><h2>Známé Wi‑Fi podle priority</h2><p>Hotspot vypneš podržením GPIO35 na 3 s. Deska pak zkouší sítě shora dolů. Když žádná neodpoví, zkouší je dál. Hotspot se sám nezapne.</p>
+        <div id="network-list"></div><button type="button" id="add-network">＋ Přidat síť</button>
+        <p class="hint">Nejvýše 5 sítí, 2,4 GHz s osobním heslem WPA2/WPA3. Přihlášení účtem (např. eduroam) ani webovým portálem tato verze neumí. Po připojení zůstává v dané síti až do výpadku.</p>
+        <button class="primary">Uložit pořadí sítí</button>
+      </form>
+      <form id="wifi-form" class="panel"><h2>Ruční hotspot</h2><p id="ap-status"></p><label>Název hotspotu<input id="apSsid" required maxlength="32" autocomplete="off"></label><label>Heslo hotspotu<input id="apPassword" type="password" required minlength="8" maxlength="63" autocomplete="new-password"></label>
+        <p class="hint">Zapíná a vypíná se pouze podržením GPIO35 na 3 s; poslední volba platí i po restartu. Zapnutý hotspot nahradí připojení ke známé Wi‑Fi. Heslo: 8–63 znaků bez diakritiky. Změna názvu a hesla platí po restartu.</p><button class="primary">Uložit hotspot</button>
+      </form>
+      <section class="panel"><h2>Spojení & restart</h2><p id="diagnostics"></p><p>Stavy žárovek se načítají zpět přes Zigbee. Po příkazu může aktualizace několik sekund trvat.</p><p class="hint">Restartuje se jen T‑Display. Spárované žárovky a uložené skupiny zůstanou zachované.</p><button id="reboot">Restartovat T‑Display</button></section>
+      </div>
+    </section>
+  </div>
+</main>
+<div id="toast" role="status" hidden></div>
+<footer>Lokálně. Bez cloudu. <span>XIAO C6 ↔ T‑Display</span></footer>
+</body></html>

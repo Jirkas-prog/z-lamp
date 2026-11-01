@@ -1,0 +1,36 @@
+plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
+android {
+    namespace 'cz.zlamp'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'cz.zlamp'
+        minSdk 26
+        targetSdk 35
+        versionCode 11
+        versionName '1.6.1'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    kotlinOptions { jvmTarget = '17' }
+    signingConfigs {
+        localRelease {
+            if (System.getenv('ZLAMP_KEYSTORE')) {
+                storeFile file(System.getenv('ZLAMP_KEYSTORE'))
+                storePassword System.getenv('ZLAMP_STORE_PASSWORD')
+                keyAlias 'zlamp'
+                keyPassword System.getenv('ZLAMP_STORE_PASSWORD')
+            }
+        }
+    }
+    buildTypes { release { signingConfig signingConfigs.localRelease } }
+    lint { abortOnError true }
+    testOptions { unitTests.includeAndroidResources = true }
+}
+tasks.register('requireReleaseKey') {
+    doLast { if (!System.getenv('ZLAMP_KEYSTORE')) throw new GradleException('Release signing: use tools/build_android.ps1 -Release or set ZLAMP_KEYSTORE and ZLAMP_STORE_PASSWORD.') }
+}
+tasks.configureEach { if (name == 'preReleaseBuild') dependsOn('requireReleaseKey') }
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+}

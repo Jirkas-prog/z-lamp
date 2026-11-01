@@ -1,0 +1,17 @@
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#D7FA78</item>
+        <item name="android:windowBackground">#090D0F</item>
+        <item name="android:navigationBarColor">#090D0F</item>
+        <item name="android:statusBarColor">#090D0F</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorControlHighlight">#3B4D36</item>
+        <item name="android:seekBarStyle">@style/LightSlider</item>
+    </style>
+    <style name="LightSlider" parent="android:style/Widget.Material.SeekBar">
+        <item name="android:minHeight">48dp</item>
+        <item name="android:maxHeight">40dp</item>
+        <item name="android:splitTrack">false</item>
+    </style>
+</resources>
